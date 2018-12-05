@@ -43,7 +43,7 @@ object StreamGenerator {
       props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL")
       props.put(SaslConfigs.SASL_MECHANISM, "GSSAPI")
       props.put(SaslConfigs.SASL_KERBEROS_SERVICE_NAME, "kafka")
-      props.put(SaslConfigs.SASL_JAAS_CONFIG, "com.sun.security.auth.module.Krb5LoginModule required" +
+      props.put(SaslConfigs.SASL_JAAS_CONFIG, "com.sun.security.auth.module.Krb5LoginModule required " +
         "useKeyTab=true " +
         "storeKey=true " +
         "keyTab=\"keytab_file\" " +
