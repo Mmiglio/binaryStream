@@ -22,6 +22,8 @@ object StreamGenerator {
     val spark= SparkSession.builder().appName("binaryStreamGenerator").getOrCreate()
     val sc = spark.sparkContext
 
+    //val numExecutors = sc.getConf.getInt("spark.executor.instances", 1)
+
     // Read the binary file ad split it into records
     // recordLength = 8 bytes, 64 bits
     val rdd = sc.binaryRecords(file, 8).cache()
