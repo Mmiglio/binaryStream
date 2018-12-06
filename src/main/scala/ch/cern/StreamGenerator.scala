@@ -11,27 +11,30 @@ object StreamGenerator {
 
   def main(args: Array[String]): Unit = {
 
-    if (args.length < 2){
-      println("Input should be in the form <topic name> <file-name>")
-      return
+    if (args.length < 3){
+      println("Input should be in the form <topic name> <file-name> <delay ms>")
+      System.exit(1)
     }
 
     val topic = args(0)
     val file = args(1)
+    val delay = args(2).toLong
 
     val spark= SparkSession.builder().appName("binaryStreamGenerator").getOrCreate()
     val sc = spark.sparkContext
-
-    //val numExecutors = sc.getConf.getInt("spark.executor.instances", 1)
 
     // Read the binary file ad split it into records
     // recordLength = 8 bytes, 64 bits
     val rdd = sc.binaryRecords(file, 8).cache()
 
+    //repartition by the number of executor
+    val numExecutors = sc.getConf.getInt("spark.executor.instances", 1)
+
     // Count() to trigger cache()
-    val numRecords = rdd.count()
+    val numRecords = rdd.repartition(numExecutors).count()
     println("Number of records: "+numRecords.toString)
 
+    println("Streaming ...")
     val startTimer = System.currentTimeMillis()
     rdd.foreachPartition(partition => {
 
@@ -46,18 +49,19 @@ object StreamGenerator {
       props.put(SaslConfigs.SASL_JAAS_CONFIG, "com.sun.security.auth.module.Krb5LoginModule required " +
         "useKeyTab=true " +
         "storeKey=true " +
-        "keyTab=\"keytab_file\" " +
+        "keyTab=\"/afs/cern.ch/work/m/migliori/private/keytab_file\" " +
         "principal=\"migliori@CERN.CH\";")
-      props.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, "mytruststore.jks")
+      props.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, "/afs/cern.ch/work/m/migliori/private/mytruststore.jks")
 
-      props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
-      props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
+      props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+      props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
 
-      val producer = new KafkaProducer[String, String](props)
+      val producer = new KafkaProducer[Array[Byte], Array[Byte]](props)
 
       partition.foreach(record => {
-        val msg = new ProducerRecord[String, String](topic, record.toString)
+        val msg = new ProducerRecord[Array[Byte], Array[Byte]](topic, record)
         producer.send(msg)
+        Thread.sleep(delay)
       })
     })
 
