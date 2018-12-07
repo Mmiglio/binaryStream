@@ -3,7 +3,7 @@ package ch.cern
 import java.nio.{ByteBuffer, ByteOrder}
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions.{udf, explode}
 import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
 
 object StreamIngestion {
@@ -63,7 +63,8 @@ object StreamIngestion {
       Array(HEAD, FPGA, TDC_CHANNEL, ORBIT_CNT, BX_COUNTER, TDC_MEANS)
     })
 
-    val convertedDF = inputDF.withColumn("converted", convertUDF(inputDF("event")))
+    val convertedDF = inputDF
+      .withColumn("converted", convertUDF(inputDF("event")))
       .select(
         $"converted"(0).as("HEAD"),
         $"converted"(1).as("FPGA"),

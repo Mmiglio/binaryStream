@@ -134,14 +134,14 @@
           <!-- Comma separated list of JUnit test class names to execute -->
           <jUnitClasses>samples.AppTest</jUnitClasses>
         </configuration>
-        <executions>
-          <execution>
-            <id>test</id>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
+        <!--<executions>-->
+          <!--<execution>-->
+            <!--<id>test</id>-->
+            <!--<goals>-->
+              <!--<goal>test</goal>-->
+            <!--</goals>-->
+          <!--</execution>-->
+        <!--</executions>-->
       </plugin>
     </plugins>
   </build>

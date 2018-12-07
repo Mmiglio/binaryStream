@@ -56,6 +56,8 @@ object StreamGenerator {
       props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
       props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
 
+      props.put(ProducerConfig.BATCH_SIZE_CONFIG, "128")
+
       val producer = new KafkaProducer[Array[Byte], Array[Byte]](props)
 
       partition.foreach(record => {
