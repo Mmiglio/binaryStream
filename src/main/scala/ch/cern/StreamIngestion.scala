@@ -74,8 +74,13 @@ object StreamIngestion {
         $"converted"(5).as("TDC_MEANS")
       )
 
+    val occupancyDF = convertedDF
+      .where($"FPGA"===1)
+      .groupBy("TDC_CHANNEL")
+      .count()
+
     val query: StreamingQuery = convertedDF.writeStream
-      .outputMode("append")
+      .outputMode("complete")
       .trigger(Trigger.ProcessingTime(100))
       .format("console")
       .queryName("StreamingQuery")
