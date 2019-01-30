@@ -1,7 +1,6 @@
 package ch.cern
 
 import scala.collection.mutable
-
 import org.apache.kafka.clients.producer.KafkaProducer
 
 /*
