@@ -31,7 +31,6 @@ object KafkaProducerFactory {
         sys.addShutdownHook {
           producer.close()
         }
-
         producer
       })
   }
