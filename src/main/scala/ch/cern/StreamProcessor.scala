@@ -68,6 +68,17 @@ object StreamProcessor {
         // Write the occupancy to kafka
         Processor.sentToKafka(occupancyDF, KS.value, occupancyTopic)
 
+        // Get the selected ORBITS_CNT based on the trigger
+        val selectedOrbits = convertedDF
+          .where($"TDC_CHANNEL"===139)
+          .select("ORBIT_CNT")
+
+        if(!selectedOrbits.rdd.isEmpty) {
+
+          val events = Processor.createEvents(convertedDF, selectedOrbits, spark)
+          Processor.sentToKafka(events, KS.value, eventTopic)
+        }
+
         //Unpersist the cached dataframes
         convertedDF.unpersist()
       }

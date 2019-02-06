@@ -73,6 +73,33 @@ object Processor{
   }
 
   /**
+    *
+    * Create a dataframe starting from the trigger signal
+    *
+    * @param df
+    * @param selectedOrbits
+    * @param spark
+    * @return DataFrame with events
+    */
+  def createEvents(df: DataFrame, selectedOrbits: DataFrame, spark: SparkSession): DataFrame = {
+
+    val events = df
+      .join(selectedOrbits,"ORBIT_CNT")
+
+    events.createOrReplaceTempView("events")
+    val events2kafka = spark.sql(
+      """
+        |SELECT collect_list(FPGA) as FPGA,
+        |       collect_list(TDC_CHANNEL) as TDC_CHANNEL,
+        |       collect_list(ORBIT_CNT) as ORBIT_CNT,
+        |       collect_list(BX_COUNTER) as BX_COUNTER,
+        |       collect_list(TDC_MEANS) as TDC_MEANS
+        |FROM events
+      """.stripMargin)
+    events
+  }
+
+  /**
     * Write the dataframe to a kafka topic
     *
     * @param df

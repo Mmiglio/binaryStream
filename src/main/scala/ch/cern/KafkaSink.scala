@@ -3,6 +3,11 @@ package ch.cern
 import org.apache.kafka.clients.producer.KafkaProducer
 import java.util.Properties
 
+/**
+  * Wrapper for a Kafka Producer
+  * @param createProducer
+  * @return a kafka producer lazily when invoked
+  */
 class KafkaSink(createProducer: () => KafkaProducer[String,String]) extends Serializable {
 
   import org.apache.kafka.clients.producer.ProducerRecord
