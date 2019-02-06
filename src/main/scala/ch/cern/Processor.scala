@@ -87,7 +87,7 @@ object Processor{
       .join(selectedOrbits,"ORBIT_CNT")
 
     events.createOrReplaceTempView("events")
-    val events2kafka = spark.sql(
+    val eventsDF = spark.sql(
       """
         |SELECT collect_list(FPGA) as FPGA,
         |       collect_list(TDC_CHANNEL) as TDC_CHANNEL,
@@ -96,7 +96,7 @@ object Processor{
         |       collect_list(TDC_MEANS) as TDC_MEANS
         |FROM events
       """.stripMargin)
-    events
+    eventsDF
   }
 
   /**
