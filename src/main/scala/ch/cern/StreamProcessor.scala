@@ -74,7 +74,7 @@ object StreamProcessor {
           .select("ORBIT_CNT")
 
         if(!selectedOrbits.rdd.isEmpty) {
-
+          println("Found something!")
           val events = Processor.createEvents(convertedDF, selectedOrbits, spark)
           Processor.sentToKafka(events, KS.value, eventTopic)
         }
