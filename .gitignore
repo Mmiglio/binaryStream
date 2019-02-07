@@ -1,4 +1,4 @@
 .idea
 target
 src/test
-scr/main/scala/ch/cern/KafkaSink.scala
+src/main/scala/ch/cern/KafkaSink.scala

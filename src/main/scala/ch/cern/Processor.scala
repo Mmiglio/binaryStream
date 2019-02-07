@@ -112,13 +112,7 @@ object Processor {
     * @param ks
     * @param topic
     */
-  /*def sentToKafka(df: DataFrame, ks: KafkaSink, topic: String): Unit = {
-    df.toJSON.foreachPartition(partition => {
-      partition.foreach(record => {
-        ks.send(topic, record.toString())
-      })
-    })
-  }*/
+
   def sentToKafka(df: DataFrame, topic: String): Unit = {
     df.toJSON.foreachPartition(partition => {
       val producer = KafkaProducerFactory.getOrCreateProducer(

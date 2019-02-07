@@ -4,11 +4,12 @@ import org.apache.kafka.clients.producer.KafkaProducer
 
 import scala.collection.mutable
 
-/*
-Kafka Producer Factory
-The factory creates only single instance of the producer for any given producer configuration.
-If the producer instance has been already created, the existing instance is returned and reused.
- */
+/**
+  * Kafka Producer Factory
+  * The factory creates only single instance of the producer for any given producer configuration.
+  * If the producer instance has been already created, the existing instance is returned and reused.
+  */
+
 object KafkaProducerFactory {
 
   import scala.collection.JavaConverters._
@@ -17,14 +18,10 @@ object KafkaProducerFactory {
 
   def getOrCreateProducer(config: Map[String, Object]): KafkaProducer[String, String] = {
 
+    // Add default config if needed
     val defaultConfig = Map()
-    /*
-      "key.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
-      "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
-     */
 
     val finalConfig = defaultConfig ++ config
-    //val finalConfig = KafkaClientProperties.getProducerProperties
 
     Producers.getOrElseUpdate(
       finalConfig, {

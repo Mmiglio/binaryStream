@@ -3,9 +3,6 @@ package ch.cern
 import org.apache.kafka.clients.producer.KafkaProducer
 import java.util.Properties
 
-import scala.collection.mutable
-
-/*
 /**
   * Wrapper for a Kafka Producer
   * @param createProducer
@@ -35,34 +32,25 @@ object KafkaSink {
     }
     new KafkaSink(f)
   }
-}*/
-
-object KafkaSink {
-
-  import scala.collection.JavaConverters._
-
-  private val Producers = mutable.Map[Map[String, Object], KafkaProducer[String, String]]()
-
-  def getOrCreateProducer(config: Map[String, Object]): KafkaProducer[String, String] = {
-
-    val defaultConfig = Map()
-    /*
-      "key.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
-      "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
-     */
-
-    val finalConfig = defaultConfig ++ config
-    //val finalConfig = KafkaClientProperties.getProducerProperties
-
-    Producers.getOrElseUpdate(
-      finalConfig, {
-        val producer = new KafkaProducer[String, String](finalConfig.asJava)
-
-        sys.addShutdownHook {
-          producer.close()
-        }
-        producer
-      })
-  }
-
 }
+
+/*
+  /*def sentToKafka(df: DataFrame, ks: KafkaSink, topic: String): Unit = {
+    df.toJSON.foreachPartition(partition => {
+      partition.foreach(record => {
+        ks.send(topic, record.toString())
+      })
+    })
+  }*/
+ */
+
+/*
+// Broadcast Kafka Producer
+    /*val KS = ssc.sparkContext.broadcast(
+      KafkaSink(KafkaClientProperties.getProducerProperties)
+    )*/
+ */
+
+/*
+Processor.sentToKafka(occupancyDF, KS.value, occupancyTopic)
+ */
