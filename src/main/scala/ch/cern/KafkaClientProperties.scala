@@ -21,12 +21,20 @@ object KafkaClientProperties {
   /**
     * @return Producer Properties
     */
-  def getProducerProperties: Properties = {
+  /*def getProducerProperties: Properties = {
     val config: Properties = new Properties
     config.put("bootstrap.servers", brokers)
     config.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
     config.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
     config
+  }*/
+  def getProducerProperties: Map[String, Object] = {
+    val producerConfig = Map[String, Object](
+      "bootstrap.servers" -> brokers,
+      "key.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
+      "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
+    )
+    producerConfig
   }
 
 }

@@ -2,10 +2,13 @@ package ch.cern
 
 import java.nio.{ByteBuffer, ByteOrder}
 
-import org.apache.spark.sql.functions.{udf, col}
+import org.apache.kafka.clients.producer.ProducerRecord
+
+import scala.collection.JavaConverters._
+import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-object Processor{
+object Processor {
 
   /**
     * Convert a DataFrame containing binary record
@@ -20,18 +23,19 @@ object Processor{
     def asUInt(longValue: Long) = {
       longValue & 0x00000000FFFFFFFFL
     }
+
     // UDF used to unpack the messages
     val unpack = udf((record: Array[Byte]) => {
 
       val bb = ByteBuffer.wrap(record).order(ByteOrder.LITTLE_ENDIAN)
       val buffer = bb.getLong // get 8 bytes
 
-      val HEAD        = asUInt((buffer >> 62) & 0x3)
-      val FPGA        = asUInt((buffer >> 58) & 0xF)
+      val HEAD = asUInt((buffer >> 62) & 0x3)
+      val FPGA = asUInt((buffer >> 58) & 0xF)
       val TDC_CHANNEL = asUInt((buffer >> 49) & 0x1FF) + 1
-      val ORBIT_CNT   = asUInt((buffer >> 17) & 0xFFFFFFFF)
-      val BX_COUNTER  = asUInt((buffer >> 5) & 0xFFF)
-      val TDC_MEANS   = asUInt((buffer >> 0) & 0x1F) - 1
+      val ORBIT_CNT = asUInt((buffer >> 17) & 0xFFFFFFFF)
+      val BX_COUNTER = asUInt((buffer >> 5) & 0xFFF)
+      val TDC_MEANS = asUInt((buffer >> 0) & 0x1F) - 1
 
       Array(HEAD, FPGA, TDC_CHANNEL, ORBIT_CNT, BX_COUNTER, TDC_MEANS)
     })
@@ -69,6 +73,7 @@ object Processor{
         |SELECT collect_list(TDC_CHANNEL) as TDC_CHANNEL, collect_list(count) as COUNT
         |FROM histogram
       """.stripMargin)
+    spark.catalog.uncacheTable("histogram")
     histogram
   }
 
@@ -84,7 +89,7 @@ object Processor{
   def createEvents(df: DataFrame, selectedOrbits: DataFrame, spark: SparkSession): DataFrame = {
 
     val events = df
-      .join(selectedOrbits,"ORBIT_CNT")
+      .join(selectedOrbits, "ORBIT_CNT")
 
     events.createOrReplaceTempView("events")
     val eventsDF = spark.sql(
@@ -96,6 +101,7 @@ object Processor{
         |       collect_list(TDC_MEANS) as TDC_MEANS
         |FROM events
       """.stripMargin)
+    spark.catalog.uncacheTable("events")
     eventsDF
   }
 
@@ -106,12 +112,22 @@ object Processor{
     * @param ks
     * @param topic
     */
-  def sentToKafka(df: DataFrame, ks: KafkaSink, topic: String): Unit = {
+  /*def sentToKafka(df: DataFrame, ks: KafkaSink, topic: String): Unit = {
     df.toJSON.foreachPartition(partition => {
       partition.foreach(record => {
         ks.send(topic, record.toString())
       })
     })
+  }*/
+  def sentToKafka(df: DataFrame, topic: String): Unit = {
+    df.toJSON.foreachPartition(partition => {
+      val producer = KafkaProducerFactory.getOrCreateProducer(
+        KafkaClientProperties.getProducerProperties
+      )
+      partition.foreach(record => {
+        producer.send(new ProducerRecord[String, String](topic, record.toString))
+        producer.flush()
+      })
+    })
   }
-
 }

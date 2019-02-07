@@ -37,9 +37,9 @@ object StreamProcessor {
     ssc.sparkContext.setLogLevel("ERROR")
 
     // Broadcast Kafka Producer
-    val KS = ssc.sparkContext.broadcast(
+    /*val KS = ssc.sparkContext.broadcast(
       KafkaSink(KafkaClientProperties.getProducerProperties)
-    )
+    )*/
 
     // Create direct stream
     val stream = KafkaUtils.createDirectStream[Array[Byte], Array[Byte]](
@@ -66,16 +66,18 @@ object StreamProcessor {
         val occupancyDF = Processor.computeOccupancy(convertedDF, spark)
 
         // Write the occupancy to kafka
-        Processor.sentToKafka(occupancyDF, KS.value, occupancyTopic)
+        //Processor.sentToKafka(occupancyDF, KS.value, occupancyTopic)
+        Processor.sentToKafka(occupancyDF, occupancyTopic)
 
         // Get the selected ORBITS_CNT based on the trigger
         val selectedOrbits = convertedDF
           .where($"TDC_CHANNEL"===139)
           .select("ORBIT_CNT")
 
-        if(!selectedOrbits.rdd.isEmpty) {
+        if(!selectedOrbits.take(1).isEmpty) {
           val events = Processor.createEvents(convertedDF, selectedOrbits, spark)
-          Processor.sentToKafka(events, KS.value, eventTopic)
+          //Processor.sentToKafka(events, KS.value, eventTopic)
+          Processor.sentToKafka(events, eventTopic)
         }
 
         //Unpersist the cached dataframes

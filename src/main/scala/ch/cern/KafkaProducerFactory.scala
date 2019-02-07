@@ -1,43 +1,15 @@
 package ch.cern
 
 import org.apache.kafka.clients.producer.KafkaProducer
-import java.util.Properties
 
 import scala.collection.mutable
 
 /*
-/**
-  * Wrapper for a Kafka Producer
-  * @param createProducer
-  * @return a kafka producer lazily when invoked
-  */
-class KafkaSink(createProducer: () => KafkaProducer[String,String]) extends Serializable {
-
-  import org.apache.kafka.clients.producer.ProducerRecord
-
-  lazy val producer = createProducer()
-
-  def send(topic: String, record: String): Unit = {
-    producer.send(new ProducerRecord(topic, record))
-  }
-}
-
-object KafkaSink {
-
-  def apply(config:Properties): KafkaSink = {
-
-    val f = () => {
-      val producer = new KafkaProducer[String, String](config)
-      sys.addShutdownHook {
-        producer.close()
-      }
-      producer
-    }
-    new KafkaSink(f)
-  }
-}*/
-
-object KafkaSink {
+Kafka Producer Factory
+The factory creates only single instance of the producer for any given producer configuration.
+If the producer instance has been already created, the existing instance is returned and reused.
+ */
+object KafkaProducerFactory {
 
   import scala.collection.JavaConverters._
 
