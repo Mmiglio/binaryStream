@@ -9,15 +9,14 @@ object StreamGenerator {
 
   def main(args: Array[String]): Unit = {
 
-    if (args.length < 4){
-      println("Input should be in the form <topic name> <file-name> <delay ms> <delay ns>")
+    if (args.length < 3){
+      println("Input should be in the form <topic name> <file-name> <delay ms>")
       System.exit(1)
     }
 
     val topic = args(0)
     val file = args(1)
     val delay_ms = args(2).toLong
-    val delay_ns = args(3).toInt
 
     val spark= SparkSession.builder().appName("binaryStreamGenerator").getOrCreate()
     val sc = spark.sparkContext
@@ -25,13 +24,13 @@ object StreamGenerator {
 
     // Read the binary file ad split it into records
     // recordLength = 8 bytes, 64 bits
-    val rdd = sc.binaryRecords(file, 8).cache()
+    val rdd = sc.binaryRecords(file, 8) //.cache()
 
     //repartition by the number of executor
     val numExecutors = sc.getConf.getInt("spark.executor.instances", 1)
 
     // Count() to trigger cache()
-    println("Caching files ...")
+    println("Reading files ...")
     val numRecords = rdd.repartition(numExecutors).count()
     println("Number of records: "+numRecords.toString)
 
@@ -49,12 +48,18 @@ object StreamGenerator {
       props.put(ProducerConfig.BATCH_SIZE_CONFIG, "10000")
 
       val producer = new KafkaProducer[Array[Byte], Array[Byte]](props)
+      sys.addShutdownHook {
+        producer.close()
+      }
 
       partition.foreach(record => {
         val msg = new ProducerRecord[Array[Byte], Array[Byte]](topic, record)
         producer.send(msg)
-        Thread.sleep(delay_ns)
+        if(delay_ms!=0){
+          Thread.sleep(delay_ms)
+        }
       })
+      producer.close()
     })
 
     val stopTimer = System.currentTimeMillis()

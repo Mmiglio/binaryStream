@@ -9,7 +9,6 @@ import scala.collection.mutable
   * The factory creates only single instance of the producer for any given producer configuration.
   * If the producer instance has been already created, the existing instance is returned and reused.
   */
-
 object KafkaProducerFactory {
 
   import scala.collection.JavaConverters._
@@ -26,7 +25,6 @@ object KafkaProducerFactory {
     Producers.getOrElseUpdate(
       finalConfig, {
         val producer = new KafkaProducer[String, String](finalConfig.asJava)
-
         sys.addShutdownHook {
           producer.close()
         }

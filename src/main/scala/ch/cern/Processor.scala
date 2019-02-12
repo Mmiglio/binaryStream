@@ -2,9 +2,7 @@ package ch.cern
 
 import java.nio.{ByteBuffer, ByteOrder}
 
-import org.apache.kafka.clients.producer.ProducerRecord
-
-import scala.collection.JavaConverters._
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -113,7 +111,7 @@ object Processor {
     * @param topic
     */
 
-  def sentToKafka(df: DataFrame, topic: String): Unit = {
+  def sendToKafka(df: DataFrame, topic: String): Unit = {
     df.toJSON.foreachPartition(partition => {
       val producer = KafkaProducerFactory.getOrCreateProducer(
         KafkaClientProperties.getProducerProperties
@@ -124,4 +122,5 @@ object Processor {
       })
     })
   }
+
 }

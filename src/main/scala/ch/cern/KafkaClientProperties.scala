@@ -10,8 +10,8 @@ object KafkaClientProperties {
   def getConsumerProperties: Map[String, Object] = {
     val consumerConfig = Map[String, Object](
       "bootstrap.servers" -> brokers,
-      "key.serializer" -> "org.apache.kafka.common.serialization.ByteArrayDeserializer",
-      "value.serializer" -> "org.apache.kafka.common.serialization.ByteArrayDeserializer",
+      "key.deserializer" -> "org.apache.kafka.common.serialization.ByteArrayDeserializer",
+      "value.deserializer" -> "org.apache.kafka.common.serialization.ByteArrayDeserializer",
       "group.id" -> "40"
     )
     consumerConfig

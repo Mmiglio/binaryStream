@@ -1,10 +1,10 @@
 package ch.cern
 
 import org.apache.spark.sql.SparkSession
-
 import org.apache.spark.streaming.kafka010.{ConsumerStrategies, KafkaUtils, LocationStrategies}
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
 
 object StreamProcessor {
 
@@ -35,7 +35,7 @@ object StreamProcessor {
     val ssc = new StreamingContext(conf, Milliseconds(batchTime))
     ssc.sparkContext.setLogLevel("ERROR")
 
-    // Create direct stream
+    // Create a direct stream
     val stream = KafkaUtils.createDirectStream[Array[Byte], Array[Byte]](
       ssc,
       LocationStrategies.PreferConsistent,
@@ -54,13 +54,13 @@ object StreamProcessor {
         val df = rdd.toDF("batch")
 
         // Unpack the binary records
-        val convertedDF = Processor.unpackDataFrame(df).cache()
+        val convertedDF = Processor.unpackDataFrame(df).persist(StorageLevel.MEMORY_ONLY)
 
         // Compute the occupancy
         val occupancyDF = Processor.computeOccupancy(convertedDF, spark)
 
         // Write the occupancy to kafka
-        Processor.sentToKafka(occupancyDF, occupancyTopic)
+        Processor.sendToKafka(occupancyDF, occupancyTopic)
 
         // Get the selected ORBITS_CNT based on the trigger
         val selectedOrbits = convertedDF
@@ -69,11 +69,12 @@ object StreamProcessor {
 
         if(!selectedOrbits.take(1).isEmpty) {
           val events = Processor.createEvents(convertedDF, selectedOrbits, spark)
-          Processor.sentToKafka(events, eventTopic)
+          Processor.sendToKafka(events, eventTopic)
         }
 
-        //Unpersist the cached dataframe
+        //Unpersist cached stuff
         convertedDF.unpersist()
+        spark.sqlContext.clearCache()
       }
     })
 
