@@ -15,6 +15,7 @@ object StreamProcessor {
     var occupancyTopic = ""
     var eventTopic = ""
     var batchTime = 500
+    var nHits = 0
 
     // Get parameters: kafka topics and batch time
     try {
@@ -22,10 +23,11 @@ object StreamProcessor {
       occupancyTopic = args(1)
       eventTopic = args(2)
       batchTime = args(3).toInt
+      nHits = args(4).toInt
     } catch {
       case e: Exception => {
         println("Wrong number of parameters")
-        println("Input should be in the form <input topic> <occupancy topic> <event topic> <batch-time (ms)>")
+        println("Input should be in the form <input topic> <occupancy topic> <event topic> <batch-time (ms)> <numberOfWords>")
         System.exit(1)
       }
     }
@@ -51,10 +53,14 @@ object StreamProcessor {
         // Get the singleton instance of SparkSession
         val spark = SparkSession.builder.config(rdd.sparkContext.getConf).getOrCreate()
         import spark.implicits._
-        val df = rdd.toDF("batch")
 
+        /*val df = rdd.toDF("batch")
         // Unpack the binary records
-        val convertedDF = Processor.unpackDataFrame(df).persist(StorageLevel.MEMORY_ONLY)
+        val convertedDF = Processor.unpackDataFrame(df).persist(StorageLevel.MEMORY_ONLY)*/
+
+        // Each message contains nHits hits -> parse the messages
+        // Parse the payload and convert it
+        val convertedDF = Processor.unpackRDD(spark, rdd, nHits)//.persist(StorageLevel.MEMORY_ONLY)
 
         // Compute the occupancy
         val occupancyDF = Processor.computeOccupancy(convertedDF, spark)
@@ -73,7 +79,6 @@ object StreamProcessor {
         }
 
         //Unpersist cached stuff
-        convertedDF.unpersist()
         spark.sqlContext.clearCache()
       }
     })

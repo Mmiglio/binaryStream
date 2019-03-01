@@ -2,11 +2,65 @@ package ch.cern
 
 import java.nio.{ByteBuffer, ByteOrder}
 
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.apache.spark.sql.functions.{col, udf}
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions.{col, explode, udf}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import scala.collection.mutable.ArrayBuffer
+
 object Processor {
+
+  /**
+    * Unpack an RDD and convert it into a DF
+    * @param spark
+    * @param rdd
+    * @param nwords
+    * @return
+    */
+
+  def unpackRDD(spark: SparkSession, rdd: RDD[Array[Byte]], nwords: Int): DataFrame = {
+
+    // similar to UInt32_t
+    def asUInt(longValue: Long) = {
+      longValue & 0x00000000FFFFFFFFL
+    }
+
+    val transformed = rdd.map(batch => {
+      val bb = ByteBuffer.wrap(batch).order(ByteOrder.LITTLE_ENDIAN)
+      val hits = ArrayBuffer[Array[Long]]()
+
+      for (_ <- 1 to nwords){
+
+        val hit = bb.getLong
+        val HEAD = asUInt((hit >> 62) & 0x3)
+        val FPGA = asUInt((hit >> 58) & 0xF)
+        val TDC_CHANNEL = asUInt((hit >> 49) & 0x1FF) + 1
+        val ORBIT_CNT = asUInt((hit >> 17) & 0xFFFFFFFF)
+        val BX_COUNTER = asUInt((hit >> 5) & 0xFFF)
+        val TDC_MEANS = asUInt((hit >> 0) & 0x1F) - 1
+
+        hits.append(Array(HEAD, FPGA, TDC_CHANNEL, ORBIT_CNT, BX_COUNTER, TDC_MEANS))
+      }
+
+      hits
+    })
+
+    import spark.implicits._
+    val convertedDataframe = transformed
+      .toDF("records")
+      .withColumn("records", explode($"records"))
+      .select(
+        col("records")(0).as("HEAD"),
+        col("records")(1).as("FPGA"),
+        col("records")(2).as("TDC_CHANNEL"),
+        col("records")(3).as("ORBIT_CNT"),
+        col("records")(4).as("BX_COUNTER"),
+        col("records")(5).as("TDC_MEANS")
+      )
+
+    convertedDataframe
+  }
 
   /**
     * Convert a DataFrame containing binary record
@@ -110,7 +164,6 @@ object Processor {
     * @param ks
     * @param topic
     */
-
   def sendToKafka(df: DataFrame, topic: String): Unit = {
     df.toJSON.foreachPartition(partition => {
       val producer = KafkaProducerFactory.getOrCreateProducer(

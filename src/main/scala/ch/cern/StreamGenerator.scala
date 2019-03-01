@@ -24,7 +24,7 @@ object StreamGenerator {
 
     // Read the binary file ad split it into records
     // recordLength = 8 bytes, 64 bits
-    val rdd = sc.binaryRecords(file, 8) //.cache()
+    val rdd = sc.binaryRecords(file, 32) //.cache()
 
     //repartition by the number of executor
     val numExecutors = sc.getConf.getInt("spark.executor.instances", 1)
@@ -69,4 +69,14 @@ object StreamGenerator {
     println("Sent %d msg/s".format((numRecords.toFloat/((stopTimer-startTimer).toFloat/1000)).toInt))
   }
 
+  implicit class ExtendedRandom(ran: scala.util.Random) {
+    def nextByteArray(size: Int) = {
+      val arr = new Array[Byte](size)
+      ran.nextBytes(arr)
+      arr
+    }
+  }
+
 }
+
+
