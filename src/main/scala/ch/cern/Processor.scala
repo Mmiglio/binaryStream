@@ -4,7 +4,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{col, explode, udf}
+import org.apache.spark.sql.functions.{col, explode}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.collection.mutable.ArrayBuffer
@@ -63,48 +63,6 @@ object Processor {
   }
 
   /**
-    * Convert a DataFrame containing binary record
-    *
-    * @param df
-    * @return Converted DatataFrame
-    *
-    */
-  def unpackDataFrame(df: DataFrame): DataFrame = {
-
-    // similar to UInt32_t
-    def asUInt(longValue: Long) = {
-      longValue & 0x00000000FFFFFFFFL
-    }
-
-    // UDF used to unpack the messages
-    val unpack = udf((record: Array[Byte]) => {
-
-      val bb = ByteBuffer.wrap(record).order(ByteOrder.LITTLE_ENDIAN)
-      val buffer = bb.getLong // get 8 bytes
-
-      val HEAD = asUInt((buffer >> 62) & 0x3)
-      val FPGA = asUInt((buffer >> 58) & 0xF)
-      val TDC_CHANNEL = asUInt((buffer >> 49) & 0x1FF) + 1
-      val ORBIT_CNT = asUInt((buffer >> 17) & 0xFFFFFFFF)
-      val BX_COUNTER = asUInt((buffer >> 5) & 0xFFF)
-      val TDC_MEANS = asUInt((buffer >> 0) & 0x1F) - 1
-
-      Array(HEAD, FPGA, TDC_CHANNEL, ORBIT_CNT, BX_COUNTER, TDC_MEANS)
-    })
-
-    // Apply the udf to the dataframe and extract the columns
-    df.withColumn("converted", unpack(df("batch")))
-      .select(
-        col("converted")(0).as("HEAD"),
-        col("converted")(1).as("FPGA"),
-        col("converted")(2).as("TDC_CHANNEL"),
-        col("converted")(3).as("ORBIT_CNT"),
-        col("converted")(4).as("BX_COUNTER"),
-        col("converted")(5).as("TDC_MEANS")
-      )
-  }
-
-  /**
     * Compute the histogram of the TDC and return the dataframe
     * composed by only one row containing
     * json = {"TDC_CHANNEL":[1,2,3..], "COUNT":[21,67,8,...]}
@@ -116,13 +74,15 @@ object Processor {
     */
   def computeOccupancy(df: DataFrame, spark: SparkSession): DataFrame = {
 
-    val occupancy = df.groupBy("TDC_CHANNEL").count()
+    val occupancy = df.groupBy("FPGA","TDC_CHANNEL").count()
 
     // Collapse dataframe
     occupancy.createOrReplaceTempView("histogram")
     val histogram = spark.sql(
       """
-        |SELECT collect_list(TDC_CHANNEL) as TDC_CHANNEL, collect_list(count) as COUNT
+        |SELECT collect_list(FPGA) as FPGA,
+        |       collect_list(TDC_CHANNEL) as TDC_CHANNEL,
+        |       collect_list(count) as COUNT
         |FROM histogram
       """.stripMargin)
     spark.catalog.uncacheTable("histogram")
@@ -165,6 +125,7 @@ object Processor {
     * @param topic
     */
   def sendToKafka(df: DataFrame, topic: String): Unit = {
+
     df.toJSON.foreachPartition(partition => {
       val producer = KafkaProducerFactory.getOrCreateProducer(
         KafkaClientProperties.getProducerProperties

@@ -48,19 +48,18 @@ object StreamProcessor {
     ).map(x => x.value())
 
     stream.foreachRDD(rdd => {
+
+      val startTimer = System.currentTimeMillis()
+
       if(!rdd.isEmpty()){
 
         // Get the singleton instance of SparkSession
         val spark = SparkSession.builder.config(rdd.sparkContext.getConf).getOrCreate()
         import spark.implicits._
 
-        /*val df = rdd.toDF("batch")
-        // Unpack the binary records
-        val convertedDF = Processor.unpackDataFrame(df).persist(StorageLevel.MEMORY_ONLY)*/
-
         // Each message contains nHits hits -> parse the messages
         // Parse the payload and convert it
-        val convertedDF = Processor.unpackRDD(spark, rdd, nHits)//.persist(StorageLevel.MEMORY_ONLY)
+        val convertedDF = Processor.unpackRDD(spark, rdd, nHits).persist(StorageLevel.MEMORY_ONLY)
 
         // Compute the occupancy
         val occupancyDF = Processor.computeOccupancy(convertedDF, spark)
@@ -70,7 +69,7 @@ object StreamProcessor {
 
         // Get the selected ORBITS_CNT based on the trigger
         val selectedOrbits = convertedDF
-          .where($"TDC_CHANNEL"===139)
+          .where($"TDC_CHANNEL"===139 && $"ORBIT_CNT"%10000===0)
           .select("ORBIT_CNT")
 
         if(!selectedOrbits.take(1).isEmpty) {
@@ -80,7 +79,9 @@ object StreamProcessor {
 
         //Unpersist cached stuff
         spark.sqlContext.clearCache()
+        convertedDF.unpersist()
       }
+      println("Processing Time: %.1f s\n".format((System.currentTimeMillis()-startTimer).toFloat/1000))
     })
 
     // Start the computation
